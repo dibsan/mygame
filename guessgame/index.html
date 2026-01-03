@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elite Guess Master</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --glass: rgba(255, 255, 255, 0.9);
+            --border: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Prevent scrolling and zooming on mobile */
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            height: 100dvh; /* Dynamic viewport height for mobile browsers */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f172a;
+            background: radial-gradient(at 0% 0%, #4338ca 0px, transparent 50%),
+                        radial-gradient(at 100% 0%, #db2777 0px, transparent 50%),
+                        radial-gradient(at 50% 50%, #1e293b 0px, transparent 80%);
+            background-size: 180% 180%;
+            animation: mesh 12s ease infinite;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        @keyframes mesh {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 360px; /* Optimized for modern smartphones */
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 35px 25px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        h1 { font-weight: 800; font-size: 1.6rem; color: #0f172a; margin-bottom: 10px; }
+        p { color: #475569; margin-bottom: 25px; font-size: 0.9rem; line-height: 1.4; }
+
+        /* Larger touch areas for mobile fingers */
+        input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid rgba(0,0,0,0.08);
+            background: white;
+            border-radius: 18px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 15px;
+            appearance: none; /* Removes default iOS styling */
+        }
+
+        button {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 18px;
+            background: var(--primary);
+            color: white;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 8px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .heart-container {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .heart { font-size: 1.5rem; transition: 0.3s; }
+        .lost { filter: grayscale(1) opacity(0.2); transform: scale(0.8); }
+
+        #feedback { 
+            margin-top: 20px; 
+            font-weight: 700; 
+            font-size: 1rem; 
+            min-height: 1.2em;
+        }
+
+        .hidden { display: none; }
+
+        /* Mobile Shake vibration feel */
+        .shake { animation: shake 0.4s ease-in-out; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainCard">
+    <div id="setup">
+        <h1>🎯 Challenge</h1>
+        <p>You have <b>3 attempts</b> to win.<br>One chance. No restarts.</p>
+        <input type="number" id="maxRange" pattern="[0-9]*" inputmode="numeric" placeholder="Set Max Range">
+        <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <div id="game" class="hidden">
+        <div class="heart-container">
+            <span class="heart">❤️</span>
+            <span class="heart">❤️</span>
+            <span class="heart">❤️</span>
+        </div>
+        <p id="rangeHint"></p>
+        
+        <input type="number" id="guessInput" pattern="[0-9]*" inputmode="numeric" placeholder="Your Guess">
+        <button onclick="makeGuess()" id="guessBtn">Analyze</button>
+        
+        <div id="feedback"></div>
+    </div>
+</div>
+
+<audio id="bgMusic" loop>
+    <source src="IkKudi (1).mp3" type="audio/mpeg">
+</audio>
+
+<script>
+    const music = document.getElementById('bgMusic');
+    let secret;
+    let lives = 3;
+
+    function startGame() {
+        const max = document.getElementById('maxRange').value;
+        if (!max || max < 1) return;
+
+        secret = Math.floor(Math.random() * max) + 1;
+        
+        music.volume = 0.4;
+        music.play().catch(() => {});
+
+        document.getElementById('setup').classList.add('hidden');
+        document.getElementById('game').classList.remove('hidden');
+        document.getElementById('rangeHint').innerText = `Guess between 1 and ${max}`;
+    }
+
+    function makeGuess() {
+        const input = document.getElementById('guessInput');
+        const val = Number(input.value);
+        const feed = document.getElementById('feedback');
+        const hearts = document.querySelectorAll('.heart');
+        const card = document.getElementById('mainCard');
+
+        if (!input.value) return;
+
+        if (val === secret) {
+            feed.innerHTML = "🏆 YOU WON!<br>Target Found.";
+            feed.style.color = "#10b981";
+            terminateGame();
+        } else {
+            lives--;
+            hearts[2 - lives].classList.add('lost');
+            card.classList.add('shake');
+            setTimeout(() => card.classList.remove('shake'), 400);
+
+            if (lives <= 0) {
+                feed.innerHTML = `💀 GAME OVER<br>It was ${secret}.`;
+                feed.style.color = "#f43f5e";
+                terminateGame();
+            } else {
+                feed.innerText = val < secret ? "Too Low ⬆️" : "Too High ⬇️";
+                feed.style.color = "#475569";
+            }
+        }
+        input.value = "";
+    }
+
+    function terminateGame() {
+        document.getElementById('guessBtn').remove();
+        document.getElementById('guessInput').remove();
+        music.volume = 0.1;
+    }
+</script>
+
+</body>
+</html>
